@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RECON — OSINT Intelligence Scanner</title>
+    <meta name="description" content="RECON OSINT Intelligence Scanner — Search usernames, emails, and full names across 120+ platforms with breach detection and identity correlation.">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⬡</text></svg>">
+    
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6109270472398539"
+         crossorigin="anonymous"></script>
+</head>
+<body>
+
+<div class="app-wrapper">
+
+    <!-- ═══ Ad Banner Top ═══ -->
+    <div class="ad-banner-top" id="ad-banner-top">
+        <ins class="adsbygoogle"
+             style="display:inline-block;width:728px;height:90px"
+             data-ad-client="ca-pub-6109270472398539"
+             data-ad-slot="auto"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <!-- ═══ Hero Section ═══ -->
+    <section class="hero">
+        <div class="hero-logo">
+            <div class="hero-icon">⬡</div>
+            <div class="hero-title">
+                <h1>RECON</h1>
+                <div class="subtitle">O S I N T</div>
+            </div>
+        </div>
+
+        <!-- Mode Tabs -->
+        <div class="mode-tabs" id="modeTabs">
+            <button class="mode-tab active" data-mode="username" onclick="setMode('username')">Username</button>
+            <button class="mode-tab" data-mode="email" onclick="setMode('email')">Email</button>
+            <button class="mode-tab" data-mode="fullname" onclick="setMode('fullname')">
+                Full Name
+                <span class="badge">BETA</span>
+            </button>
+            <button class="mode-tab" data-mode="merge" onclick="setMode('merge')">
+                Merge Scan
+                <span class="badge">PRO</span>
+            </button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-bar" id="searchBar">
+            <input type="text" id="searchInput" placeholder="Enter username..." 
+                   autocomplete="off" spellcheck="false">
+            
+            <div class="merge-inputs" id="mergeInputs">
+                <input type="text" id="mergeUser" placeholder="Username" autocomplete="off">
+                <input type="text" id="mergeEmail" placeholder="Email" autocomplete="off">
+                <input type="text" id="mergeName" placeholder="Full Name" autocomplete="off">
+            </div>
+
+            <button class="search-btn" id="searchBtn" onclick="startScan()">Search</button>
+            <button class="stop-btn" id="stopBtn" onclick="stopScan()">■ Stop</button>
+        </div>
+
+        <!-- Options -->
+        <div class="options-row">
+            <label class="deep-check">
+                <input type="checkbox" id="deepCheck">
+                Deep Search (slower, more thorough)
+            </label>
+            <span class="source-label">120+ platforms • Google Dorking • LeakCheck</span>
+        </div>
+    </section>
+
+    <!-- ═══ Main Content ═══ -->
+    <div class="main-grid">
+        <div class="content-area">
+
+            <!-- Progress -->
+            <div class="progress-section" id="progressSection" style="display:none;">
+                <div class="progress-bar-wrapper">
+                    <label>OVERALL</label>
+                    <div class="progress-bar progress-overall">
+                        <div class="fill" id="progressOverall"></div>
+                    </div>
+                </div>
+                <div class="progress-bar-wrapper">
+                    <label>GOOGLE DORKING</label>
+                    <div class="progress-bar"><div class="fill" id="prog-Google Dorking"></div></div>
+                </div>
+                <div class="progress-bar-wrapper">
+                    <label>USERNAME CHECK</label>
+                    <div class="progress-bar"><div class="fill" id="prog-Username Check"></div></div>
+                </div>
+                <div class="progress-bar-wrapper">
+                    <label>ENRICHMENT</label>
+                    <div class="progress-bar"><div class="fill" id="prog-Enrichment"></div></div>
+                </div>
+                <div class="progress-bar-wrapper">
+                    <label>EMAIL LOOKUP</label>
+                    <div class="progress-bar"><div class="fill" id="prog-Email Lookup"></div></div>
+                </div>
+            </div>
+
+            <!-- Results Header -->
+            <div class="results-header" id="resultsHeader" style="display:none;">
+                <h2>▎ RESULTS</h2>
+                <div class="results-tabs" id="resultsTabs">
+                    <button class="results-tab active" data-tab="all" onclick="filterResults('all')">ALL</button>
+                    <button class="results-tab" data-tab="profiles" onclick="filterResults('profiles')">PROFILES</button>
+                    <button class="results-tab" data-tab="documents" onclick="filterResults('documents')">DOCUMENTS</button>
+                    <button class="results-tab" data-tab="mentions" onclick="filterResults('mentions')">MENTIONS</button>
+                </div>
+                <div class="action-btns">
+                    <button class="action-btn" onclick="exportResults()">⬇ Export</button>
+                    <button class="action-btn" onclick="copyUrls()">⎘ Copy URLs</button>
+                </div>
+            </div>
+
+            <!-- Results Grid -->
+            <div class="results-grid" id="resultsGrid">
+                <div class="empty-state" id="emptyState">
+                    <div class="icon">🔍</div>
+                    <p>Enter a username, email, or name and hit Search to begin your OSINT investigation.</p>
+                </div>
+            </div>
+
+            <!-- Terminal -->
+            <div class="terminal" id="terminal" style="display:none;">
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Stats -->
+            <div class="sidebar-card" id="statsCard">
+                <h3>Scan Statistics</h3>
+                <div class="stat-row">
+                    <span class="stat-label">Profiles</span>
+                    <span class="stat-value" id="statProfiles">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Documents</span>
+                    <span class="stat-value" id="statDocs">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Mentions</span>
+                    <span class="stat-value" id="statMentions">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Total</span>
+                    <span class="stat-value" id="statTotal" style="color:var(--accent);">0</span>
+                </div>
+            </div>
+
+            <!-- Ad Sidebar -->
+            <div class="ad-sidebar" id="ad-sidebar">
+                <ins class="adsbygoogle"
+                     style="display:inline-block;width:300px;height:250px"
+                     data-ad-client="ca-pub-6109270472398539"
+                     data-ad-slot="auto"></ins>
+                <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+            </div>
+
+            <!-- Second Ad -->
+            <div class="ad-sidebar" id="ad-sidebar-2" style="margin-top:16px;">
+                <ins class="adsbygoogle"
+                     style="display:inline-block;width:300px;height:250px"
+                     data-ad-client="ca-pub-6109270472398539"
+                     data-ad-slot="auto"></ins>
+                <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Footer ═══ -->
+    <footer class="footer">
+        <p>RECON OSINT Intelligence Scanner &copy; 2026 &mdash; 
+        Built for educational & authorized security research only.</p>
+        <p style="margin-top:6px;">
+            Breach data <a href="https://leakcheck.io" target="_blank">Powered by LeakCheck</a>
+        </p>
+    </footer>
+
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
