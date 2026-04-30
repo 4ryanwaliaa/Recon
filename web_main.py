@@ -138,7 +138,7 @@ import json
 _scanners: dict = {}
 
 
-@app.route("/api/scan", methods=["POST"])
+@app.route("/api/scan", methods=["POST"], strict_slashes=False)
 def start_scan():
     """Start a new SSE-powered scan. Returns scan_id for streaming."""
     data = request.get_json(force=True, silent=True) or {}
@@ -178,7 +178,7 @@ def start_scan():
     return jsonify({"scan_id": scan_id, "status": "started"})
 
 
-@app.route("/api/scan/<scan_id>/stream")
+@app.route("/api/scan/<scan_id>/stream", strict_slashes=False)
 def scan_stream(scan_id):
     """SSE endpoint — streams real-time scan events."""
     from flask import Response, stream_with_context
@@ -216,7 +216,7 @@ def scan_stream(scan_id):
     )
 
 
-@app.route("/api/scan/<scan_id>/stop", methods=["POST"])
+@app.route("/api/scan/<scan_id>/stop", methods=["POST"], strict_slashes=False)
 def stop_scan(scan_id):
     """Stop a running scan."""
     scanner = _scanners.get(scan_id)

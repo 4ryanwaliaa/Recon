@@ -63,7 +63,7 @@ async function startScan() {
     showScanning(true);
 
     try {
-        const resp = await fetch('/api/scan', {
+        const resp = await fetch('api/scan', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
@@ -87,7 +87,7 @@ async function startScan() {
 async function stopScan() {
     if (!currentScanId) return;
     try {
-        await fetch(`/api/scan/${currentScanId}/stop`, { method: 'POST' });
+        await fetch(`api/scan/${currentScanId}/stop`, { method: 'POST' });
     } catch (e) { /* ignore */ }
     if (eventSource) {
         eventSource.close();
@@ -100,7 +100,7 @@ async function stopScan() {
 // ── SSE Connection ──────────────────────────────────────────
 
 function connectSSE(scanId) {
-    eventSource = new EventSource(`/api/scan/${scanId}/stream`);
+    eventSource = new EventSource(`api/scan/${scanId}/stream`);
 
     eventSource.addEventListener('log', (e) => {
         const data = JSON.parse(e.data);
