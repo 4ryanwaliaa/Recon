@@ -114,6 +114,12 @@ class EmailLookup:
     ]
 
     def __init__(self, hibp_api_key: Optional[str] = None):
+        if not hibp_api_key:
+            try:
+                from config import HIBP_API_KEY
+                hibp_api_key = HIBP_API_KEY
+            except ImportError:
+                pass
         self.hibp_api_key = hibp_api_key or os.environ.get("HIBP_API_KEY", "")
         self.results: list[dict] = []
         self._stop_flag = False
