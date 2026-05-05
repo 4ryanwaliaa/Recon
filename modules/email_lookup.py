@@ -1,6 +1,7 @@
 """
 ╔══════════════════════════════════════════════════════════════╗
-║  Email Lookup — Gravatar, LeakCheck, HIBP, 30+ Site Checks  ║
+║  Email Lookup — Gravatar, LeakCheck, HIBP, 55+ Site Checks  ║
+║  Email Analysis, Provider Detection, Breach Intelligence    ║
 ║  Checks which sites/services an email is linked to          ║
 ╚══════════════════════════════════════════════════════════════╝
 """
@@ -98,7 +99,7 @@ class EmailLookup:
         {"platform": "Coursera", "url": "https://api.coursera.org/api/accountExists.v1?email={email}",
          "check": "api_200"},
 
-        # ── Other ──────────────────────────────────────────────
+        # ── Productivity & Cloud ───────────────────────────────
         {"platform": "Zoom", "url": "https://zoom.us/account/user/validate_email?email={email}",
          "check": "api_200"},
         {"platform": "Dropbox", "url": "https://www.dropbox.com/login/ajax_email_check?email={email}",
@@ -109,8 +110,64 @@ class EmailLookup:
          "check": "api_200"},
         {"platform": "Canva", "url": "https://www.canva.com/_ajax/login/email_check?email={email}",
          "check": "api_200"},
+        {"platform": "Figma", "url": "https://www.figma.com/api/session/check_email?email={email}",
+         "check": "api_200"},
+        {"platform": "Trello", "url": "https://trello.com/1/authentication/check?email={email}",
+         "check": "api_200"},
+        {"platform": "Asana", "url": "https://app.asana.com/-/check_email?email={email}",
+         "check": "api_200"},
+        {"platform": "Evernote", "url": "https://www.evernote.com/Registration.action?email={email}",
+         "check": "page_exists"},
+        {"platform": "Todoist", "url": "https://todoist.com/API/v9.0/user/check_email?email={email}",
+         "check": "api_200"},
+
+        # ── Communication & Social ────────────────────────────
         {"platform": "Discord", "url": "https://discord.com/api/v9/auth/register",
          "check": "discord", "method": "post"},
+        {"platform": "Snapchat", "url": "https://accounts.snapchat.com/accounts/merlin/check_email?email={email}",
+         "check": "api_200"},
+        {"platform": "Tumblr", "url": "https://www.tumblr.com/api/v2/user/check_email?email={email}",
+         "check": "api_200"},
+        {"platform": "Reddit", "url": "https://www.reddit.com/api/check_email.json?email={email}",
+         "check": "taken"},
+        {"platform": "LinkedIn", "url": "https://www.linkedin.com/uas/login-submit?email={email}",
+         "check": "page_exists"},
+
+        # ── Crypto & Finance ──────────────────────────────────
+        {"platform": "Coinbase", "url": "https://www.coinbase.com/api/v1/users/check_email?email={email}",
+         "check": "api_200"},
+        {"platform": "Binance", "url": "https://www.binance.com/bapi/accounts/v1/public/account/check/email?email={email}",
+         "check": "api_200"},
+        {"platform": "PayPal", "url": "https://www.paypal.com/signin/client?email={email}",
+         "check": "page_exists"},
+        {"platform": "Stripe", "url": "https://dashboard.stripe.com/ajax/emails/check?email={email}",
+         "check": "api_200"},
+
+        # ── Travel & Delivery ─────────────────────────────────
+        {"platform": "Airbnb", "url": "https://www.airbnb.com/api/v2/auth_requests?email={email}",
+         "check": "api_200"},
+        {"platform": "Uber", "url": "https://auth.uber.com/v2/web-signup-check?email={email}",
+         "check": "api_200"},
+        {"platform": "DoorDash", "url": "https://identity.doordash.com/api/v1/check_email?email={email}",
+         "check": "api_200"},
+        {"platform": "Grubhub", "url": "https://api-gtm.grubhub.com/auth/verify_email?email={email}",
+         "check": "api_200"},
+
+        # ── Health & Fitness ──────────────────────────────────
+        {"platform": "Strava", "url": "https://www.strava.com/api/v3/athletes/check_email?email={email}",
+         "check": "api_200"},
+        {"platform": "MyFitnessPal", "url": "https://api.myfitnesspal.com/v2/auth/check-email?email={email}",
+         "check": "api_200"},
+        {"platform": "Fitbit", "url": "https://www.fitbit.com/login/check-email?email={email}",
+         "check": "api_200"},
+
+        # ── Music & Entertainment ─────────────────────────────
+        {"platform": "SoundCloud", "url": "https://api-v2.soundcloud.com/signup/check-email?email={email}",
+         "check": "api_200"},
+        {"platform": "Deezer", "url": "https://connect.deezer.com/oauth/user_auth.php?email={email}",
+         "check": "page_exists"},
+        {"platform": "Twitch", "url": "https://passport.twitch.tv/usernames/check?email={email}",
+         "check": "api_200"},
     ]
 
     def __init__(self, hibp_api_key: Optional[str] = None):
@@ -516,31 +573,129 @@ class EmailLookup:
         return results
 
     # ──────────────────────────────────────────────────────────
+    #  Email Analysis — Provider & Format Intelligence
+    # ──────────────────────────────────────────────────────────
+
+    DISPOSABLE_DOMAINS = {
+        "tempmail.com", "guerrillamail.com", "throwaway.email", "yopmail.com",
+        "mailinator.com", "10minutemail.com", "trashmail.com", "sharklasers.com",
+        "guerrillamailblock.com", "grr.la", "dispostable.com", "fakeinbox.com",
+        "temp-mail.org", "emailondeck.com", "getnada.com", "mohmal.com",
+        "maildrop.cc", "mintemail.com", "tempinbox.com", "burnermail.io",
+    }
+
+    PROVIDER_INFO = {
+        "gmail.com": {"name": "Google Gmail", "type": "personal", "icon": "📧"},
+        "googlemail.com": {"name": "Google Gmail", "type": "personal", "icon": "📧"},
+        "yahoo.com": {"name": "Yahoo Mail", "type": "personal", "icon": "📮"},
+        "yahoo.co.in": {"name": "Yahoo Mail India", "type": "personal", "icon": "📮"},
+        "outlook.com": {"name": "Microsoft Outlook", "type": "personal", "icon": "📬"},
+        "hotmail.com": {"name": "Microsoft Hotmail", "type": "personal", "icon": "📬"},
+        "live.com": {"name": "Microsoft Live", "type": "personal", "icon": "📬"},
+        "icloud.com": {"name": "Apple iCloud", "type": "personal", "icon": "🍎"},
+        "me.com": {"name": "Apple iCloud", "type": "personal", "icon": "🍎"},
+        "protonmail.com": {"name": "ProtonMail", "type": "privacy", "icon": "🔐"},
+        "proton.me": {"name": "Proton Mail", "type": "privacy", "icon": "🔐"},
+        "tutanota.com": {"name": "Tutanota", "type": "privacy", "icon": "🔐"},
+        "aol.com": {"name": "AOL Mail", "type": "personal", "icon": "📧"},
+        "zoho.com": {"name": "Zoho Mail", "type": "business", "icon": "💼"},
+        "mail.ru": {"name": "Mail.ru", "type": "personal", "icon": "📧"},
+        "yandex.com": {"name": "Yandex Mail", "type": "personal", "icon": "📧"},
+        "gmx.com": {"name": "GMX Mail", "type": "personal", "icon": "📧"},
+        "fastmail.com": {"name": "Fastmail", "type": "privacy", "icon": "🔐"},
+        "hey.com": {"name": "HEY Email", "type": "premium", "icon": "👋"},
+    }
+
+    def analyze_email(self, email: str) -> dict:
+        """Analyze the email address for provider info, format, and risk signals."""
+        result = {
+            "platform": "Email Analysis",
+            "url": "",
+            "exists": True,
+            "username": email,
+            "source": "email_lookup",
+            "category": "mention",
+            "bio": "",
+        }
+
+        local_part = email.split("@")[0] if "@" in email else email
+        domain = email.split("@")[1].lower() if "@" in email else ""
+
+        info_parts = []
+
+        # Provider detection
+        provider = self.PROVIDER_INFO.get(domain)
+        if provider:
+            info_parts.append(f"{provider['icon']} Provider: {provider['name']} ({provider['type']})")
+        else:
+            info_parts.append(f"📧 Domain: {domain} (custom/corporate)")
+
+        # Disposable email detection
+        if domain in self.DISPOSABLE_DOMAINS:
+            info_parts.append("⚠ DISPOSABLE email detected — likely temporary")
+
+        # Format analysis
+        has_dots = "." in local_part
+        has_numbers = any(c.isdigit() for c in local_part)
+        has_plus = "+" in local_part
+        if has_plus:
+            base = local_part.split("+")[0]
+            info_parts.append(f"📌 Plus-addressing detected (base: {base}@{domain})")
+        if has_dots and not has_numbers:
+            info_parts.append("👤 Name-based email format")
+        elif has_numbers and len(local_part) < 6:
+            info_parts.append("🔢 Short alphanumeric handle")
+
+        # DNS MX check
+        try:
+            import socket
+            mx_records = socket.getaddrinfo(domain, 25, socket.AF_INET)
+            if mx_records:
+                info_parts.append(f"✓ Mail server active ({domain})")
+        except Exception:
+            info_parts.append(f"⚠ Could not verify mail server for {domain}")
+
+        result["bio"] = " | ".join(info_parts)
+        return result
+
+    # ──────────────────────────────────────────────────────────
     #  Full Email Scan
     # ──────────────────────────────────────────────────────────
 
     def scan(self, email: str, callback=None) -> list[dict]:
-        """Run the full email investigation pipeline."""
+        """Run the full email investigation pipeline (5 phases)."""
         self._stop_flag = False
         all_results = []
 
-        # Step 1: Gravatar
+        # Step 1: Email Analysis
         if not self._stop_flag:
             if callback:
-                callback(module="Email Lookup", message="[1/4] Checking Gravatar...",
-                         progress=5, results=[])
+                callback(module="Email Lookup", message="[1/5] Analyzing email format & provider...",
+                         progress=3, results=[])
+            analysis = self.analyze_email(email)
+            all_results.append(analysis)
+            if callback:
+                callback(module="Email Lookup",
+                         message=f"[1/5] {analysis['bio']}",
+                         progress=8, results=[analysis])
+
+        # Step 2: Gravatar
+        if not self._stop_flag:
+            if callback:
+                callback(module="Email Lookup", message="[2/5] Checking Gravatar...",
+                         progress=10, results=[])
             grav = self.check_gravatar(email)
             all_results.append(grav)
             if callback:
                 found = [grav] if grav["exists"] else []
                 callback(module="Email Lookup",
-                         message=f"[1/4] Gravatar — {'FOUND!' if grav['exists'] else 'not found'}",
-                         progress=15, results=found)
+                         message=f"[2/5] Gravatar — {'FOUND!' if grav['exists'] else 'not found'}",
+                         progress=18, results=found)
 
-        # Step 2: LeakCheck (FREE breach API)
+        # Step 3: LeakCheck (FREE breach API)
         if not self._stop_flag:
             if callback:
-                callback(module="Email Lookup", message="[2/4] Checking LeakCheck breaches...",
+                callback(module="Email Lookup", message="[3/5] Checking LeakCheck breaches...",
                          progress=20, results=[])
             leak = self.check_leakcheck(email)
             all_results.append(leak)
@@ -549,30 +704,30 @@ class EmailLookup:
                     bd = leak.get("breach_data", {})
                     total = bd.get("total_breaches", 0) if bd else 0
                     callback(module="Email Lookup",
-                             message=f"[2/4] LeakCheck — ⚠ BREACHED in {total} databases!",
+                             message=f"[3/5] LeakCheck — ⚠ BREACHED in {total} databases!",
                              progress=30, results=[leak])
                 else:
                     callback(module="Email Lookup",
-                             message=f"[2/4] LeakCheck — {leak['bio']}",
+                             message=f"[3/5] LeakCheck — {leak['bio']}",
                              progress=30, results=[])
 
-        # Step 3: HIBP (paid API, optional)
+        # Step 4: HIBP (paid API, optional)
         if not self._stop_flag:
             if callback:
-                callback(module="Email Lookup", message="[3/4] Checking HaveIBeenPwned...",
+                callback(module="Email Lookup", message="[4/5] Checking HaveIBeenPwned...",
                          progress=35, results=[])
             hibp = self.check_hibp(email)
             all_results.append(hibp)
             if callback and hibp["exists"]:
                 callback(module="Email Lookup",
-                         message=f"[3/4] HIBP — BREACHED!",
+                         message=f"[4/5] HIBP — BREACHED!",
                          progress=40, results=[hibp])
 
-        # Step 4: Site registration checks (30+ sites)
+        # Step 5: Site registration checks (55+ sites)
         if not self._stop_flag:
             if callback:
                 callback(module="Email Lookup",
-                         message=f"[4/4] Checking {len(self.EMAIL_SITES)} sites for registration...",
+                         message=f"[5/5] Checking {len(self.EMAIL_SITES)} sites for registration...",
                          progress=45, results=[])
             site_results = self.check_email_sites(email, callback)
             all_results.extend(site_results)

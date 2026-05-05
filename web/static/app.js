@@ -518,24 +518,8 @@ function applyFilter() {
     document.querySelectorAll('.breach-card, .identity-card').forEach(card => { card.style.display = ''; });
 }
 
-// ── Export / Copy ────────────────────────────────────────────
 
-function exportResults() {
-    if (allResults.length === 0) return;
-    const blob = new Blob([JSON.stringify(allResults, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `recon_results_${Date.now()}.json`; a.click();
-    URL.revokeObjectURL(url);
-}
 
-function copyUrls() {
-    const urls = allResults.filter(r => r.url && r.url.startsWith('http') && r.exists).map(r => r.url);
-    if (urls.length === 0) return;
-    navigator.clipboard.writeText(urls.join('\n'))
-        .then(() => logLine('success', `Copied ${urls.length} URLs to clipboard`))
-        .catch(() => logLine('error', 'Failed to copy to clipboard'));
-}
 
 // ── Utilities ────────────────────────────────────────────────
 
