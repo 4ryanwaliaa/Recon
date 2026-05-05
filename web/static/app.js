@@ -299,7 +299,7 @@ function createResultCard(r) {
             <div class="card-avatar" style="border-color:${color}40">${avatarHTML}</div>
             <div class="card-info">
                 <div class="card-platform">${escapeHtml(platform)}</div>
-                <div class="card-url"><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(truncateUrl(r.url))}</a></div>
+                <div class="card-url"><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(platform === 'Instagram' ? r.url : truncateUrl(r.url))}</a></div>
             </div>
             <span class="card-category ${catClass}">${catLabel}</span>
         </div>
