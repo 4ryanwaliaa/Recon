@@ -2,9 +2,11 @@
 ╔══════════════════════════════════════════════════════════════╗
 ║  Username Checker — Multi-Platform Enumeration Engine       ║
 ║  Checks 120+ platforms via HTTP HEAD/GET with threading     ║
+║  Platform-specific validators for SPA sites (IG, FB, etc.)  ║
 ╚══════════════════════════════════════════════════════════════╝
 """
 
+import re
 import time
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -18,7 +20,7 @@ from typing import Optional
 PLATFORMS: list[tuple[str, str, int]] = [
     # ── Social Media ──────────────────────────────────────────
     ("Twitter / X",       "https://x.com/{username}",                            200),
-    ("Instagram",         "https://www.instagram.com/{username}/",               200),
+    ("Instagram",         "https://www.instagram.com/{username}/?hl=tr",         200),
     ("Facebook",          "https://www.facebook.com/{username}",                 200),
     ("TikTok",            "https://www.tiktok.com/@{username}",                  200),
     ("Snapchat",          "https://www.snapchat.com/add/{username}",             200),
@@ -172,6 +174,178 @@ PLATFORMS: list[tuple[str, str, int]] = [
 TOTAL_PLATFORMS = len(PLATFORMS)
 
 
+# ──────────────────────────────────────────────────────────────
+#  Platform-Specific Validators
+#  These handle SPA sites that return 200 for everything
+# ──────────────────────────────────────────────────────────────
+
+def _validate_instagram(resp, username: str) -> bool:
+    """
+    Instagram returns 200 for ALL URLs (login wall).
+    Strategy: Instagram shows specific error text for non-existent profiles.
+    If we DON'T see that error, the profile likely exists.
+    """
+    body = resp.text[:10000]
+    body_lower = body.lower()
+
+    # ── Negative signals: profile does NOT exist ─────────────
+    not_found_signals = [
+        "sorry, this page isn't available",
+        "this page isn't available",
+        "the link you followed may be broken",
+        "page not found",
+        "user not found",
+    ]
+    for sig in not_found_signals:
+        if sig in body_lower:
+            return False
+
+    # ── Strong positive signals ──────────────────────────────
+    # og:description with follower counts = definitely real
+    if "follower" in body_lower and "following" in body_lower:
+        return True
+
+    # Username appears in page meta/JSON data
+    positive_signals = [
+        f'"username":"{username}"',
+        f'"username": "{username}"',
+        f"@{username}",
+        "edge_followed_by",
+        "is_private",
+        "biography",
+    ]
+    for sig in positive_signals:
+        if sig.lower() in body_lower:
+            return True
+
+    # og:title contains the username
+    og_title_match = re.search(
+        r'content=["\']([^"\']*)["\'][^>]*(?:property|name)=["\']og:title["\']',
+        body, re.IGNORECASE
+    )
+    if not og_title_match:
+        og_title_match = re.search(
+            r'(?:property|name)=["\']og:title["\'][^>]*content=["\']([^"\']*)["\']',
+            body, re.IGNORECASE
+        )
+    if og_title_match:
+        title = og_title_match.group(1).lower()
+        if username.lower() in title:
+            return True
+
+    # ── If page is large and no error found → likely exists ──
+    # Instagram login wall for REAL profiles is still a big page
+    # with the user's data embedded; non-existent profiles are shorter
+    if len(resp.text) > 5000:
+        return True
+
+    # Small/empty page with no positive signals → not found
+    return False
+
+
+def _validate_facebook(resp, username: str) -> bool:
+    """Facebook also returns 200 with login walls for non-existent users."""
+    body_lower = resp.text[:5000].lower()
+
+    # Facebook login wall
+    if "you must log in to continue" in body_lower:
+        return False
+    if "this page isn't available" in body_lower:
+        return False
+    if "this content isn't available" in body_lower:
+        return False
+
+    # Real profile indicators
+    if f"/{username}" in body_lower and ("profile" in body_lower or "timeline" in body_lower):
+        return True
+
+    # Check og:title for username
+    og_title = re.search(
+        r'<meta\s+(?:property|name)=["\']og:title["\']\s+content=["\']([^"\']*)["\']',
+        resp.text[:5000], re.IGNORECASE
+    )
+    if og_title and username.lower() in og_title.group(1).lower():
+        return True
+
+    return True  # Facebook is more reliable with status codes
+
+
+def _validate_tiktok(resp, username: str) -> bool:
+    """TikTok returns 200 with different page content for invalid users."""
+    body_lower = resp.text[:5000].lower()
+
+    if "couldn't find this account" in body_lower:
+        return False
+    if "this account was banned" in body_lower:
+        return False
+    if '"statusCode":10202' in resp.text[:5000]:
+        return False
+
+    # Real profile signals
+    if '"uniqueId"' in resp.text[:5000] or '"nickname"' in resp.text[:5000]:
+        return True
+
+    # Check og:title
+    og_title = re.search(
+        r'<meta\s+(?:property|name)=["\']og:title["\']\s+content=["\']([^"\']*)["\']',
+        resp.text[:5000], re.IGNORECASE
+    )
+    if og_title:
+        title = og_title.group(1).lower()
+        if username.lower() in title or f"@{username.lower()}" in title:
+            return True
+        if "tiktok" == title.strip():
+            return False
+
+    return True
+
+
+def _validate_twitter(resp, username: str) -> bool:
+    """Twitter/X returns 200 but may show 'This account doesn't exist'."""
+    body_lower = resp.text[:5000].lower()
+
+    if "this account doesn't exist" in body_lower:
+        return False
+    if "account is suspended" in body_lower:
+        return False
+    if "something went wrong" in body_lower and username.lower() not in body_lower:
+        return False
+
+    return True
+
+
+def _validate_linkedin(resp, username: str) -> bool:
+    """LinkedIn aggressively redirects to login — check for authwall."""
+    body_lower = resp.text[:5000].lower()
+
+    if "authwall" in body_lower or "join linkedin" in body_lower:
+        # LinkedIn shows authwall even for real profiles — check og:title
+        og_title = re.search(
+            r'<meta\s+(?:property|name)=["\']og:title["\']\s+content=["\']([^"\']*)["\']',
+            resp.text[:5000], re.IGNORECASE
+        )
+        if og_title:
+            title = og_title.group(1).lower()
+            if username.lower() in title or "linkedin" not in title:
+                return True
+        return False
+
+    return True
+
+
+# Registry of platform-specific validators
+PLATFORM_VALIDATORS = {
+    "Instagram": _validate_instagram,
+    "Facebook": _validate_facebook,
+    "TikTok": _validate_tiktok,
+    "Twitter / X": _validate_twitter,
+    "LinkedIn": _validate_linkedin,
+}
+
+# Platforms that need longer timeout (SPAs, slow APIs)
+SLOW_PLATFORMS = {"Instagram", "Facebook", "TikTok", "LinkedIn", "Threads"}
+
+
 class UsernameChecker:
     """
     Performs concurrent HTTP checks against 120+ platforms to detect
@@ -185,8 +359,10 @@ class UsernameChecker:
             "Chrome/124.0.0.0 Safari/537.36"
         ),
         "Accept-Language": "en-US,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
     TIMEOUT = 8  # seconds
+    SLOW_TIMEOUT = 12  # for SPA platforms
 
     def __init__(self, max_workers: int = 20, delay: float = 0.1):
         self.max_workers = max_workers
@@ -212,33 +388,45 @@ class UsernameChecker:
         if self._stop_flag:
             return result
 
+        timeout = self.SLOW_TIMEOUT if name in SLOW_PLATFORMS else self.TIMEOUT
+
         try:
             resp = requests.get(
                 url,
                 headers=self.HEADERS,
-                timeout=self.TIMEOUT,
+                timeout=timeout,
                 allow_redirects=True,
             )
             result["status_code"] = resp.status_code
-            # Consider 200 as found, but also check for soft 404s
+
             if resp.status_code == expected:
-                # Basic soft-404 detection
-                body_lower = resp.text[:2000].lower()
-                soft_404_signals = [
-                    "page not found",
-                    "user not found",
-                    "profile not found",
-                    "doesn't exist",
-                    "does not exist",
-                    "no user",
-                    "404",
-                    "this page isn't available",
-                    "sorry, this page",
-                    "account suspended",
-                    "account has been suspended",
-                ]
-                is_soft_404 = any(sig in body_lower for sig in soft_404_signals)
-                result["exists"] = not is_soft_404
+                # ── Platform-specific validation ─────────────
+                validator = PLATFORM_VALIDATORS.get(name)
+                if validator:
+                    result["exists"] = validator(resp, username)
+                else:
+                    # Generic soft-404 detection for standard platforms
+                    body_lower = resp.text[:2000].lower()
+                    soft_404_signals = [
+                        "page not found",
+                        "user not found",
+                        "profile not found",
+                        "doesn't exist",
+                        "does not exist",
+                        "no user",
+                        "404",
+                        "this page isn't available",
+                        "sorry, this page",
+                        "account suspended",
+                        "account has been suspended",
+                    ]
+                    is_soft_404 = any(sig in body_lower for sig in soft_404_signals)
+                    result["exists"] = not is_soft_404
+
+                # ── Extract basic metadata from the page ─────
+                if result["exists"]:
+                    self._extract_basic_metadata(result, resp, username)
+
         except requests.exceptions.Timeout:
             result["status_code"] = -1  # timeout
         except requests.exceptions.ConnectionError:
@@ -247,6 +435,68 @@ class UsernameChecker:
             result["status_code"] = -3  # unknown error
 
         return result
+
+    def _extract_basic_metadata(self, result: dict, resp, username: str):
+        """Extract basic bio/pic from meta tags during the initial check."""
+        try:
+            html = resp.text[:8000]
+
+            # Extract og:description
+            desc_match = re.search(
+                r'<meta\s+[^>]*?content=["\']([^"\']*)["\'][^>]*?'
+                r'(?:property|name)=["\']og:description["\']',
+                html, re.IGNORECASE
+            )
+            if not desc_match:
+                desc_match = re.search(
+                    r'<meta\s+[^>]*?(?:property|name)=["\']og:description["\']'
+                    r'[^>]*?content=["\']([^"\']*)["\']',
+                    html, re.IGNORECASE
+                )
+            if desc_match:
+                desc = desc_match.group(1).strip()
+                if desc and len(desc) > 10:
+                    result["bio"] = desc[:200]
+
+            # Extract og:image for profile pic
+            img_match = re.search(
+                r'<meta\s+[^>]*?content=["\']([^"\']*)["\'][^>]*?'
+                r'(?:property|name)=["\']og:image["\']',
+                html, re.IGNORECASE
+            )
+            if not img_match:
+                img_match = re.search(
+                    r'<meta\s+[^>]*?(?:property|name)=["\']og:image["\']'
+                    r'[^>]*?content=["\']([^"\']*)["\']',
+                    html, re.IGNORECASE
+                )
+            if img_match:
+                pic_url = img_match.group(1).strip()
+                if pic_url and pic_url.startswith("http"):
+                    # Skip generic/default images
+                    skip_words = ["default", "logo", "favicon", "placeholder", "share", "open_graph"]
+                    if not any(w in pic_url.lower() for w in skip_words):
+                        result["profile_pic_url"] = pic_url
+
+            # Extract og:title for display name
+            title_match = re.search(
+                r'<meta\s+[^>]*?content=["\']([^"\']*)["\'][^>]*?'
+                r'(?:property|name)=["\']og:title["\']',
+                html, re.IGNORECASE
+            )
+            if not title_match:
+                title_match = re.search(
+                    r'<meta\s+[^>]*?(?:property|name)=["\']og:title["\']'
+                    r'[^>]*?content=["\']([^"\']*)["\']',
+                    html, re.IGNORECASE
+                )
+            if title_match:
+                title = title_match.group(1).strip()
+                if title and title.lower() not in ("", "instagram", "facebook", "tiktok"):
+                    result["display_name"] = title[:100]
+
+        except Exception:
+            pass
 
     def scan(self, username: str, callback=None, deep: bool = False) -> list[dict]:
         """

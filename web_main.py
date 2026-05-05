@@ -48,6 +48,12 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/ads.txt")
+def ads_txt():
+    """Serve the AdSense ads.txt file."""
+    return app.send_static_file("ads.txt")
+
+
 # ══════════════════════════════════════════════════════════════
 #  SERVERLESS-SAFE API ROUTES
 #  These are stateless, synchronous, and work on Vercel + Render
@@ -233,3 +239,7 @@ def stop_scan(scan_id):
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "service": "RECON OSINT"})
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)

@@ -127,7 +127,7 @@ def _enrich_instagram(username: str) -> dict:
 
     # Method 3: Full HTML scrape — parse meta tags from page
     try:
-        page_url = f"https://www.instagram.com/{username}/"
+        page_url = f"https://www.instagram.com/{username}/?hl=tr"
         resp = requests.get(page_url, headers={
             **HEADERS,
             "Accept": "text/html,application/xhtml+xml",
@@ -393,6 +393,123 @@ def _enrich_from_og_tags(url: str) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────
+#  Twitter / X Enrichment (via syndication API — no auth needed)
+# ──────────────────────────────────────────────────────────────
+
+def _enrich_twitter(username: str) -> dict:
+    data = {"platform": "Twitter / X", "username": username}
+    try:
+        # Twitter syndication API — public, no auth
+        url = f"https://syndication.twitter.com/srv/timeline-profile/screen-name/{username}"
+        resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
+        if resp.status_code == 200:
+            html = resp.text
+            # Extract display name from the timeline HTML
+            name_m = re.search(r'data-testid="UserName"[^>]*>.*?<span[^>]*>([^<]+)</span>', html, re.DOTALL)
+            if name_m:
+                data["display_name"] = name_m.group(1).strip()
+            # Extract bio
+            bio_m = re.search(r'data-testid="UserDescription"[^>]*>([^<]+)', html)
+            if bio_m:
+                data["bio"] = bio_m.group(1).strip()[:200]
+            # Try profile pic
+            pic_m = re.search(r'src="(https://pbs\.twimg\.com/profile_images/[^"]+)"', html)
+            if pic_m:
+                data["profile_pic_url"] = pic_m.group(1)
+                data["profile_pic_data"] = _download_image(data["profile_pic_url"])
+    except Exception:
+        pass
+
+    # Fallback: OG tags from x.com
+    if not data.get("bio") and not data.get("profile_pic_url"):
+        try:
+            og = _enrich_from_og_tags(f"https://x.com/{username}")
+            for k, v in og.items():
+                if v and not data.get(k):
+                    data[k] = v
+        except Exception:
+            pass
+
+    return data
+
+
+# ──────────────────────────────────────────────────────────────
+#  TikTok Enrichment (OG tag scraping)
+# ──────────────────────────────────────────────────────────────
+
+def _enrich_tiktok(username: str) -> dict:
+    data = {"platform": "TikTok", "username": username}
+    try:
+        url = f"https://www.tiktok.com/@{username}"
+        resp = requests.get(url, headers={
+            **HEADERS,
+            "Accept": "text/html,application/xhtml+xml",
+        }, timeout=TIMEOUT)
+        if resp.status_code == 200:
+            html = resp.text[:10000]
+            # Parse meta tags
+            meta_tags = re.findall(r'<meta\s+([^>]+?)/?>',  html, re.IGNORECASE)
+            meta_map = {}
+            for tag_attrs in meta_tags:
+                content_m = re.search(r'content\s*=\s*["\']([^"\']*)["\']', tag_attrs, re.IGNORECASE)
+                if not content_m:
+                    continue
+                content = content_m.group(1)
+                prop_m = re.search(r'(?:property|name)\s*=\s*["\']([^"\']*)["\']', tag_attrs, re.IGNORECASE)
+                if not prop_m:
+                    continue
+                prop = prop_m.group(1).lower()
+                if prop not in meta_map:
+                    meta_map[prop] = content
+
+            desc = meta_map.get("og:description", "")
+            if desc:
+                # TikTok descriptions have: "Follower, Likes. Bio text"
+                followers_m = re.search(r'([\d,.]+[KMBkmb]?)\s+Follower', desc)
+                likes_m = re.search(r'([\d,.]+[KMBkmb]?)\s+Like', desc)
+                if followers_m:
+                    data["followers"] = _parse_count(followers_m.group(1))
+                if likes_m:
+                    data["enriched_data"] = {"likes": _parse_count(likes_m.group(1))}
+                # Bio is after the stats
+                bio_m = re.search(r'Likes?\.\s*(.*)', desc)
+                if bio_m:
+                    data["bio"] = bio_m.group(1).strip()[:200]
+                elif desc:
+                    data["bio"] = desc[:200]
+
+            title = meta_map.get("og:title", "")
+            if title:
+                name_m = re.match(r'^(.*?)\s*[\(\[]?@', title)
+                if name_m:
+                    data["display_name"] = name_m.group(1).strip()
+
+            pic = meta_map.get("og:image", "")
+            if pic and pic.startswith("http") and "tiktok" in pic:
+                data["profile_pic_url"] = pic
+                data["profile_pic_data"] = _download_image(pic)
+    except Exception:
+        pass
+    return data
+
+
+# ──────────────────────────────────────────────────────────────
+#  LinkedIn Enrichment (OG tag based — no API needed)
+# ──────────────────────────────────────────────────────────────
+
+def _enrich_linkedin(username: str) -> dict:
+    data = {"platform": "LinkedIn", "username": username}
+    try:
+        og = _enrich_from_og_tags(f"https://www.linkedin.com/in/{username}")
+        for k, v in og.items():
+            if v:
+                data[k] = v
+    except Exception:
+        pass
+    return data
+
+
+# ──────────────────────────────────────────────────────────────
 #  Platform Enricher Registry
 # ──────────────────────────────────────────────────────────────
 
@@ -401,6 +518,9 @@ PLATFORM_ENRICHERS = {
     "GitHub":       _enrich_github,
     "Reddit":       _enrich_reddit,
     "Gravatar":     _enrich_gravatar,
+    "Twitter / X":  _enrich_twitter,
+    "TikTok":       _enrich_tiktok,
+    "LinkedIn":     _enrich_linkedin,
 }
 
 # Platforms where we can try OG-tag scraping as fallback
@@ -409,7 +529,9 @@ OG_ENRICHABLE = {
     "500px", "DeviantArt", "ArtStation", "Kaggle", "HackerRank",
     "LeetCode", "ProductHunt", "Linktree", "About.me",
     "SoundCloud", "Bandcamp", "Letterboxd", "Goodreads",
-    "Pinterest", "Twitch", "YouTube", "TikTok",
+    "Pinterest", "Twitch", "YouTube", "Threads",
+    "Snapchat", "Steam", "Vimeo", "Kick", "Mastodon",
+    "Bluesky", "Patreon", "Substack", "Ko-fi", "Buymeacoffee",
 }
 
 

@@ -37,10 +37,22 @@ class WebScanner:
         return self._thread is not None and self._thread.is_alive()
 
     def _push(self, event_type: str, data: dict):
-        """Push an SSE event to the queue."""
+        """Push an SSE event to the queue. Handles binary data for JSON safety."""
+        clean = {}
+        for k, v in data.items():
+            if k == 'profile_pic_data':
+                if v:
+                    import base64
+                    try:
+                        clean['profile_pic_b64'] = base64.b64encode(v).decode('utf-8')
+                    except Exception:
+                        pass
+            else:
+                clean[k] = v
+
         self.queue.put({
             "event": event_type,
-            "data": json.dumps(data, default=str),
+            "data": json.dumps(clean, default=str),
         })
 
     def _cb(self, module, message, progress, results):
@@ -62,7 +74,7 @@ class WebScanner:
             has_url = bool(r.get("url", ""))
 
             if has_url and not is_simulated and not is_error:
-                self._push("result", r)
+                self._push("result", {**r, 'profile_pic_data': None})
 
             if r["category"] == "profile":
                 self._p += 1

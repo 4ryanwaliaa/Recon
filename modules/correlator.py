@@ -11,7 +11,7 @@ class IdentityCorrelator:
     """Groups results by username to form identity clusters with quality filtering."""
 
     # Minimum confidence threshold — identities below this are dropped
-    MIN_CONFIDENCE = 40
+    MIN_CONFIDENCE = 30
 
     def correlate(self, results: list[dict], target_username: str = "") -> list[dict]:
         """
@@ -146,19 +146,25 @@ class IdentityCorrelator:
 
         # ── Quality Filtering ────────────────────────────────────
         # Only keep identities that meet minimum quality standards
+        target_lower_f = target_username.lower() if target_username else ""
         high_quality = []
         for cluster in clusters.values():
-            # MUST have confidence >= 40%
+            # MUST have confidence >= 30%
             if cluster["confidence"] < self.MIN_CONFIDENCE:
                 continue
 
-            # MUST have at least one valid profile URL
-            if not cluster["has_valid_profile"]:
-                continue
+            is_exact_match = target_lower_f and cluster["username"].lower() == target_lower_f
+
+            # Exact username matches get a pass on profile URL requirement
+            if not is_exact_match:
+                # MUST have at least one valid profile URL
+                if not cluster["has_valid_profile"]:
+                    continue
 
             # Skip clusters with only "mention" category and no metadata
+            # (unless it's an exact username match)
             all_mentions = all(p["category"] == "mention" for p in cluster["platforms"])
-            if all_mentions and not cluster["has_metadata"]:
+            if all_mentions and not cluster["has_metadata"] and not is_exact_match:
                 continue
 
             high_quality.append(cluster)
