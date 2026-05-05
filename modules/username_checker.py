@@ -184,8 +184,9 @@ def _validate_instagram(resp, username: str) -> bool:
     Instagram returns 200 for ALL URLs (login wall).
     Strategy: Instagram shows specific error text for non-existent profiles.
     If we DON'T see that error, the profile likely exists.
+    Uses Turkish locale (?hl=tr) to get richer meta tags.
     """
-    body = resp.text[:10000]
+    body = resp.text[:15000]
     body_lower = body.lower()
 
     # ── Negative signals: profile does NOT exist ─────────────
@@ -195,6 +196,8 @@ def _validate_instagram(resp, username: str) -> bool:
         "the link you followed may be broken",
         "page not found",
         "user not found",
+        "bu sayfa kullanılamıyor",          # Turkish: "this page is unavailable"
+        "sayfa bulunamadı",                 # Turkish: "page not found"
     ]
     for sig in not_found_signals:
         if sig in body_lower:
@@ -203,6 +206,9 @@ def _validate_instagram(resp, username: str) -> bool:
     # ── Strong positive signals ──────────────────────────────
     # og:description with follower counts = definitely real
     if "follower" in body_lower and "following" in body_lower:
+        return True
+    # Turkish follower text
+    if "takipçi" in body_lower and "takip" in body_lower:
         return True
 
     # Username appears in page meta/JSON data
@@ -213,6 +219,12 @@ def _validate_instagram(resp, username: str) -> bool:
         "edge_followed_by",
         "is_private",
         "biography",
+        "profile_pic_url",
+        "full_name",
+        "external_url",
+        "is_verified",
+        "media_count",
+        '"user":',
     ]
     for sig in positive_signals:
         if sig.lower() in body_lower:
@@ -233,10 +245,23 @@ def _validate_instagram(resp, username: str) -> bool:
         if username.lower() in title:
             return True
 
+    # og:description exists and has content (real profiles always have this)
+    og_desc_match = re.search(
+        r'(?:property|name)=["\']og:description["\'][^>]*content=["\']([^"\']+)["\']',
+        body, re.IGNORECASE
+    )
+    if not og_desc_match:
+        og_desc_match = re.search(
+            r'content=["\']([^"\']+)["\'][^>]*(?:property|name)=["\']og:description["\']',
+            body, re.IGNORECASE
+        )
+    if og_desc_match:
+        desc = og_desc_match.group(1).strip()
+        if len(desc) > 20 and ("instagram" not in desc.lower() or username.lower() in desc.lower()):
+            return True
+
     # ── If page is large and no error found → likely exists ──
-    # Instagram login wall for REAL profiles is still a big page
-    # with the user's data embedded; non-existent profiles are shorter
-    if len(resp.text) > 5000:
+    if len(resp.text) > 3000:
         return True
 
     # Small/empty page with no positive signals → not found
