@@ -275,9 +275,9 @@ function createResultCard(r) {
 
     let avatarHTML = `<span class="platform-emoji">${icon}</span>`;
     if (r.profile_pic_b64) {
-        avatarHTML = `<img src="data:image/jpeg;base64,${r.profile_pic_b64}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<span class=\\'platform-emoji\\'>${icon}</span>'">`;
+        avatarHTML = `<img src="data:image/jpeg;base64,${r.profile_pic_b64}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none';this.parentElement.innerHTML='<span class=\\'platform-emoji\\'>${icon}</span>'">`;
     } else if (r.profile_pic_url) {
-        avatarHTML = `<img src="${escapeHtml(r.profile_pic_url)}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<span class=\\'platform-emoji\\'>${icon}</span>'">`;
+        avatarHTML = `<img src="${escapeHtml(r.profile_pic_url)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none';this.parentElement.innerHTML='<span class=\\'platform-emoji\\'>${icon}</span>'">`;
     }
 
     let metaHTML = '';

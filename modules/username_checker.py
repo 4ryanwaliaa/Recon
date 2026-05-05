@@ -20,7 +20,7 @@ from typing import Optional
 PLATFORMS: list[tuple[str, str, int]] = [
     # ── Social Media ──────────────────────────────────────────
     ("Twitter / X",       "https://x.com/{username}",                            200),
-    ("Instagram",         "https://www.instagram.com/{username}/?hl=tr",         200),
+    ("Instagram",         "https://www.instagram.com/{username}/",                200),
     ("Facebook",          "https://www.facebook.com/{username}",                 200),
     ("TikTok",            "https://www.tiktok.com/@{username}",                  200),
     ("Snapchat",          "https://www.snapchat.com/add/{username}",             200),
@@ -415,10 +415,22 @@ class UsernameChecker:
 
         timeout = self.SLOW_TIMEOUT if name in SLOW_PLATFORMS else self.TIMEOUT
 
+        # Instagram requires mobile UA to bypass login wall
+        headers = self.HEADERS
+        if name == "Instagram":
+            headers = {
+                **self.HEADERS,
+                "User-Agent": (
+                    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) "
+                    "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+                    "Version/16.6 Mobile/15E148 Safari/604.1"
+                ),
+            }
+
         try:
             resp = requests.get(
                 url,
-                headers=self.HEADERS,
+                headers=headers,
                 timeout=timeout,
                 allow_redirects=True,
             )

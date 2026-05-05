@@ -10,6 +10,7 @@ import re
 import requests
 import time
 import hashlib
+import html
 from typing import Optional
 
 HEADERS = {
@@ -17,6 +18,17 @@ HEADERS = {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+# Mobile Safari UA bypasses Instagram's login wall
+MOBILE_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+        "Version/16.6 Mobile/15E148 Safari/604.1"
     ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
@@ -33,6 +45,11 @@ def _download_image(url: str, timeout: int = 6) -> bytes:
     if not url or not url.startswith("http"):
         return b""
     try:
+        # Skip server-side download for Instagram CDN to avoid 403s and timeouts.
+        # The frontend will render the image directly using referrerpolicy="no-referrer".
+        if "cdninstagram" in url or "scontent" in url:
+            return b""
+            
         resp = requests.get(url, headers=HEADERS, timeout=timeout, stream=True)
         if resp.status_code == 200 and len(resp.content) < 5_000_000:
             return resp.content
@@ -42,28 +59,203 @@ def _download_image(url: str, timeout: int = 6) -> bytes:
 
 
 # ──────────────────────────────────────────────────────────────
-#  Instagram Enrichment (3 methods with fallbacks)
+#  Instagram Enrichment — with validation, logging & fallbacks
 # ──────────────────────────────────────────────────────────────
+
+import logging
+_ig_log = logging.getLogger("enrichment.instagram")
+
+
+def _validate_ig_username(username: str) -> bool:
+    """Instagram usernames: 1-30 chars, alphanumeric + periods + underscores."""
+    return bool(re.match(r'^[a-zA-Z0-9._]{1,30}$', username))
+
+
+def _parse_ig_meta_tags(page_html: str) -> dict:
+    """Extract all <meta> property→content pairs, with HTML-entity decoding."""
+    meta_tags = re.findall(r'<meta\s+([^>]+?)/?>', page_html, re.IGNORECASE)
+    meta_map = {}
+    for tag_attrs in meta_tags:
+        content_m = re.search(r'content\s*=\s*["\']([^"\']*)["\']', tag_attrs, re.IGNORECASE)
+        if not content_m:
+            continue
+        content = html.unescape(content_m.group(1))
+        prop_m = re.search(r'(?:property|name)\s*=\s*["\']([^"\']*)["\']', tag_attrs, re.IGNORECASE)
+        if not prop_m:
+            continue
+        prop = prop_m.group(1).lower()
+        if prop not in meta_map:
+            meta_map[prop] = content
+    return meta_map
+
+
+def _detect_ig_account_status(page_html: str, meta_map: dict) -> str:
+    """
+    Detect account status from the page content.
+    Returns: 'exists', 'not_found', 'private', 'restricted', or 'unknown'.
+    """
+    body_lower = page_html[:15000].lower()
+
+    # ── Account does not exist ────────────────────────────────
+    not_found_signals = [
+        "sorry, this page isn't available",
+        "this page isn't available",
+        "the link you followed may be broken",
+        "page not found",
+        "user not found",
+        "bu sayfa kullanılamıyor",
+        "sayfa bulunamadı",
+    ]
+    for sig in not_found_signals:
+        if sig in body_lower:
+            return "not_found"
+
+    # ── Account exists (has og metadata with follower info) ───
+    desc = meta_map.get("og:description", "")
+    if "follower" in desc.lower() and "following" in desc.lower():
+        return "exists"
+
+    # ── Page is very small / has no meaningful content ────────
+    if len(page_html) < 5000:
+        return "not_found"
+
+    return "unknown"
+
+
+def _extract_ig_data_from_meta(meta_map: dict, data: dict) -> None:
+    """Populate `data` dict from Instagram OG meta tags."""
+
+    # Profile pic from og:image (must be scontent CDN, not the IG logo)
+    pic = meta_map.get("og:image", "")
+    if pic and "scontent" in pic:
+        data["profile_pic_url"] = pic
+        # Skip server-side download — frontend renders via referrerpolicy="no-referrer"
+        data["profile_pic_data"] = b""
+
+    # Parse og:description → followers / following / posts / bio
+    desc = meta_map.get("og:description", "")
+    if desc:
+        followers_m = re.search(r'([\d,.]+[KMkm]?)\s+Follower', desc)
+        following_m = re.search(r'([\d,.]+[KMkm]?)\s+Following', desc)
+        posts_m     = re.search(r'([\d,.]+[KMkm]?)\s+Post', desc)
+        if followers_m:
+            data["followers"] = _parse_count(followers_m.group(1))
+        if following_m:
+            data["following"] = _parse_count(following_m.group(1))
+        if posts_m:
+            data["posts"] = _parse_count(posts_m.group(1))
+        bio_m = re.search(r'Posts?\s*[-\u2013\u2014]\s*(.*)', desc)
+        if bio_m:
+            data["bio"] = bio_m.group(1).strip().rstrip('"')
+
+    # Display name from og:title  ("Aryan walia (@4ryanwalia) …")
+    title = meta_map.get("og:title", "")
+    if title:
+        name_m = re.match(r'^(.*?)\s*[\(\[]?@', title)
+        if name_m:
+            data["display_name"] = name_m.group(1).strip()
+
+    # Also check the plain 'description' meta (has the actual user-written bio)
+    # Format: '67 Followers, 93 Following, 0 Posts - Aryan walia (@user) on Instagram: "bio text"'
+    # This is more accurate than og:description which just says "See Instagram photos..."
+    plain_desc = meta_map.get("description", "")
+    if plain_desc:
+        bio_m = re.search(r'on Instagram:\s*["\u201c](.+?)["\u201d]', plain_desc)
+        if bio_m:
+            data["bio"] = bio_m.group(1).strip()
+
 
 def _enrich_instagram(username: str) -> dict:
     """
-    Method 1: Session-based API (cookies from homepage)
-    Method 2: Direct API endpoint
-    Method 3: Full HTML scraping with robust meta parser
-    Method 4: Instaloader library
+    Fetch public Instagram profile data with validation, logging, and fallbacks.
+
+    Strategy (in order):
+        1. Public page meta tags (mobile UA → OG tags served by Instagram for SEO)
+        2. Session-based web API endpoint
+        3. Instaloader library (if installed)
+
+    Handles:
+        - Invalid username format
+        - Account does not exist
+        - Account is private (limited data still available via OG tags)
+        - Temporary unavailability / rate-limiting
     """
     data = {"platform": "Instagram", "username": username}
 
-    # Method 1: Session-based — visit homepage first for cookies, then API
+    # ── Step 0: Validate username format ─────────────────────
+    if not _validate_ig_username(username):
+        _ig_log.warning("Invalid Instagram username format: %s", username)
+        data["error"] = "Invalid username format"
+        return data
+
+    _ig_log.info("Enriching Instagram profile: %s", username)
+
+    # ── Step 1: Public profile page (OG meta tags) ───────────
+    #   Instagram serves <meta property="og:*"> tags to any HTTP client.
+    #   These contain follower counts, bio excerpt, and profile picture URL.
     try:
+        _ig_log.debug("Method 1: Fetching public page for %s", username)
+        resp = requests.get(
+            f"https://www.instagram.com/{username}/",
+            headers={**MOBILE_HEADERS, "Accept": "text/html,application/xhtml+xml"},
+            timeout=12,
+        )
+
+        if resp.status_code == 200:
+            page_html = resp.text
+            meta_map = _parse_ig_meta_tags(page_html)
+            status = _detect_ig_account_status(page_html, meta_map)
+
+            if status == "not_found":
+                _ig_log.info("Instagram account '%s' does not exist", username)
+                data["error"] = "Account not found"
+                return data
+
+            if status == "exists" or meta_map.get("og:image"):
+                _extract_ig_data_from_meta(meta_map, data)
+
+                has_data = data.get("bio") or data.get("profile_pic_url") or data.get("followers")
+                if has_data:
+                    _ig_log.info(
+                        "Instagram data found for %s: followers=%s, has_pic=%s, has_bio=%s",
+                        username,
+                        data.get("followers", "N/A"),
+                        bool(data.get("profile_pic_url")),
+                        bool(data.get("bio")),
+                    )
+                    return data
+                else:
+                    _ig_log.debug("Method 1 returned no usable data for %s", username)
+            else:
+                _ig_log.debug(
+                    "Account status for %s: %s (meta keys: %s)",
+                    username, status, list(meta_map.keys()),
+                )
+
+        elif resp.status_code == 404:
+            _ig_log.info("Instagram returned 404 for '%s'", username)
+            data["error"] = "Account not found"
+            return data
+        elif resp.status_code == 429:
+            _ig_log.warning("Instagram rate-limited (429) when fetching %s", username)
+            data["error"] = "Rate limited — try again later"
+        else:
+            _ig_log.debug("Instagram returned HTTP %d for %s", resp.status_code, username)
+
+    except requests.exceptions.Timeout:
+        _ig_log.warning("Timeout fetching Instagram page for %s", username)
+    except requests.exceptions.ConnectionError:
+        _ig_log.warning("Connection error fetching Instagram for %s", username)
+    except Exception as e:
+        _ig_log.debug("Method 1 failed for %s: %s", username, e)
+
+    # ── Step 2: Web API endpoint (session-based) ─────────────
+    try:
+        _ig_log.debug("Method 2: Trying web API for %s", username)
         s = requests.Session()
-        s.headers.update({
-            "User-Agent": HEADERS["User-Agent"],
-            "Accept-Language": "en-US,en;q=0.9",
-        })
-        # Visit homepage to get cookies (csrftoken, mid, ig_did, etc.)
+        s.headers.update(MOBILE_HEADERS)
         s.get("https://www.instagram.com/", timeout=8)
-        import time as _t; _t.sleep(0.5)
+        time.sleep(0.5)
 
         csrf = s.cookies.get("csrftoken", "")
         s.headers.update({
@@ -94,121 +286,17 @@ def _enrich_instagram(username: str) -> dict:
                 if data.get("profile_pic_url"):
                     data["profile_pic_data"] = _download_image(data["profile_pic_url"])
                 if data.get("bio") or data.get("profile_pic_url"):
+                    _ig_log.info("Method 2 succeeded for %s", username)
                     return data
-    except Exception:
-        pass
+        else:
+            _ig_log.debug("Web API returned HTTP %d for %s", r.status_code, username)
+    except Exception as e:
+        _ig_log.debug("Method 2 failed for %s: %s", username, e)
 
-    # Method 2: Direct API endpoint (no session)
-    try:
-        url = f"https://www.instagram.com/{username}/?__a=1&__d=dis"
-        resp = requests.get(url, headers={
-            **HEADERS,
-            "Accept": "application/json",
-            "X-IG-App-ID": "936619743392459",
-        }, timeout=TIMEOUT)
-        if resp.status_code == 200:
-            j = resp.json()
-            user = j.get("graphql", {}).get("user", {})
-            if not user:
-                user = j.get("user", {})
-            if user:
-                data["bio"] = user.get("biography", "") or ""
-                data["display_name"] = user.get("full_name", "") or ""
-                data["followers"] = user.get("edge_followed_by", {}).get("count", 0)
-                data["profile_pic_url"] = user.get("profile_pic_url_hd", user.get("profile_pic_url", ""))
-                data["is_private"] = user.get("is_private", False)
-                data["is_verified"] = user.get("is_verified", False)
-                if data.get("profile_pic_url"):
-                    data["profile_pic_data"] = _download_image(data["profile_pic_url"])
-                if data.get("bio") or data.get("profile_pic_url"):
-                    return data
-    except Exception:
-        pass
-
-    # Method 3: Full HTML scrape — parse meta tags from page
-    try:
-        page_url = f"https://www.instagram.com/{username}/?hl=tr"
-        resp = requests.get(page_url, headers={
-            **HEADERS,
-            "Accept": "text/html,application/xhtml+xml",
-        }, timeout=TIMEOUT)
-        if resp.status_code == 200:
-            html = resp.text
-            # Use robust meta tag parser (same as _enrich_from_og_tags)
-            meta_tags = re.findall(r'<meta\s+([^>]+?)/?>', html, re.IGNORECASE)
-            meta_map = {}
-            for tag_attrs in meta_tags:
-                content_m = re.search(r'content\s*=\s*["\']([^"\']*)["\']', tag_attrs, re.IGNORECASE)
-                if not content_m:
-                    continue
-                content = content_m.group(1)
-                prop_m = re.search(r'(?:property|name)\s*=\s*["\']([^"\']*)["\']', tag_attrs, re.IGNORECASE)
-                if not prop_m:
-                    continue
-                prop = prop_m.group(1).lower()
-                if prop not in meta_map:
-                    meta_map[prop] = content
-
-            # Parse og:description for followers/bio
-            desc = meta_map.get("og:description", "")
-            if desc:
-                followers_m = re.search(r'([\d,.]+[KMkm]?)\s+Follower', desc)
-                following_m = re.search(r'([\d,.]+[KMkm]?)\s+Following', desc)
-                posts_m = re.search(r'([\d,.]+[KMkm]?)\s+Post', desc)
-                if followers_m:
-                    data["followers"] = _parse_count(followers_m.group(1))
-                if following_m:
-                    data["following"] = _parse_count(following_m.group(1))
-                if posts_m:
-                    data["posts"] = _parse_count(posts_m.group(1))
-                bio_m = re.search(r'Posts?\s*[-\u2013\u2014]\s*(.*)', desc)
-                if bio_m:
-                    data["bio"] = bio_m.group(1).strip().rstrip('"')
-
-            # Profile pic from og:image (skip default IG logo)
-            pic = meta_map.get("og:image", "")
-            if pic and pic.startswith("http") and "instagram" not in pic.split("/")[2].replace("www.", "").replace("scontent", "skip"):
-                # Only use if it's a CDN pic (scontent), not a generic IG logo
-                pass
-            if pic and "scontent" in pic:
-                data["profile_pic_url"] = pic
-                data["profile_pic_data"] = _download_image(pic)
-
-            # Display name from og:title
-            title = meta_map.get("og:title", "")
-            if title:
-                name_m = re.match(r'^(.*?)\s*[\(\[]?@', title)
-                if name_m:
-                    data["display_name"] = name_m.group(1).strip()
-
-            # Also try embedded JSON (window._sharedData or window.__additionalDataLoaded)
-            shared = re.search(r'window\._sharedData\s*=\s*(\{.+?\});</script>', html)
-            if shared:
-                import json
-                try:
-                    sd = json.loads(shared.group(1))
-                    user = sd.get("entry_data", {}).get("ProfilePage", [{}])[0].get("graphql", {}).get("user", {})
-                    if user:
-                        data["bio"] = user.get("biography", "") or data.get("bio", "")
-                        data["display_name"] = user.get("full_name", "") or data.get("display_name", "")
-                        data["followers"] = user.get("edge_followed_by", {}).get("count", 0) or data.get("followers", 0)
-                        pic_url = user.get("profile_pic_url_hd", user.get("profile_pic_url", ""))
-                        if pic_url:
-                            data["profile_pic_url"] = pic_url
-                            data["profile_pic_data"] = _download_image(pic_url)
-                        data["is_private"] = user.get("is_private", False)
-                        data["is_verified"] = user.get("is_verified", False)
-                except (json.JSONDecodeError, IndexError, KeyError):
-                    pass
-
-            if data.get("bio") or data.get("profile_pic_data") or data.get("followers"):
-                return data
-    except Exception:
-        pass
-
-    # Method 4: Instaloader fallback
+    # ── Step 3: Instaloader library (if installed) ────────────
     try:
         import instaloader
+        _ig_log.debug("Method 3: Trying instaloader for %s", username)
         L = instaloader.Instaloader()
         profile = instaloader.Profile.from_username(L.context, username)
         data["bio"] = profile.biography or ""
@@ -221,11 +309,17 @@ def _enrich_instagram(username: str) -> dict:
         data["is_verified"] = profile.is_verified
         if data["profile_pic_url"]:
             data["profile_pic_data"] = _download_image(data["profile_pic_url"])
+        _ig_log.info("Method 3 (instaloader) succeeded for %s", username)
         return data
     except ImportError:
-        pass
-    except Exception:
-        pass
+        _ig_log.debug("Instaloader not installed, skipping Method 3")
+    except Exception as e:
+        _ig_log.debug("Method 3 failed for %s: %s", username, e)
+
+    # ── All methods exhausted ────────────────────────────────
+    if not data.get("error"):
+        _ig_log.warning("Instagram data not found for %s (all methods failed)", username)
+        data["error"] = "Data temporarily unavailable"
 
     return data
 
@@ -349,7 +443,8 @@ def _enrich_from_og_tags(url: str) -> dict:
             content_m = re.search(r'content\s*=\s*["\']([^"\']*)["\']', tag_attrs, re.IGNORECASE)
             if not content_m:
                 continue
-            content = content_m.group(1)
+            import html
+            content = html.unescape(content_m.group(1))
 
             # Extract property or name attribute
             prop_m = re.search(r'(?:property|name)\s*=\s*["\']([^"\']*)["\']', tag_attrs, re.IGNORECASE)
@@ -510,6 +605,73 @@ def _enrich_linkedin(username: str) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────
+#  Pinterest Enrichment (parses embedded JSON for profile pic)
+# ──────────────────────────────────────────────────────────────
+
+def _enrich_pinterest(username: str) -> dict:
+    """Pinterest og:image returns the default logo. Parse embedded JSON instead."""
+    data = {"platform": "Pinterest", "username": username}
+    try:
+        resp = requests.get(
+            f"https://www.pinterest.com/{username}/",
+            headers=HEADERS, timeout=TIMEOUT,
+        )
+        if resp.status_code != 200:
+            return data
+        html = resp.text
+
+        # Parse meta tags for bio/title
+        meta_tags = re.findall(r'<meta\s+([^>]+?)/?>', html, re.IGNORECASE)
+        meta_map = {}
+        for tag_attrs in meta_tags:
+            content_m = re.search(r'content\s*=\s*["\']([^"\']*)["\']', tag_attrs, re.IGNORECASE)
+            if not content_m:
+                continue
+            content = content_m.group(1)
+            prop_m = re.search(r'(?:property|name)\s*=\s*["\']([^"\']*)["\']', tag_attrs, re.IGNORECASE)
+            if not prop_m:
+                continue
+            prop = prop_m.group(1).lower()
+            if prop not in meta_map:
+                meta_map[prop] = content
+
+        desc = meta_map.get("og:description", "") or meta_map.get("description", "")
+        if desc:
+            data["bio"] = desc[:200]
+        title = meta_map.get("og:title", "")
+        if title:
+            name_m = re.match(r'^(.*?)\s*\(', title)
+            if name_m:
+                data["display_name"] = name_m.group(1).strip()
+            else:
+                data["display_name"] = title.replace(" - Profile | Pinterest", "").strip()[:100]
+
+        # Extract profile pic from embedded JSON (image_xlarge_url)
+        pic_m = re.search(r'"image_xlarge_url"\s*:\s*"([^"]+)"', html)
+        if not pic_m:
+            pic_m = re.search(r'"image_large_url"\s*:\s*"([^"]+)"', html)
+        if not pic_m:
+            pic_m = re.search(r'"image_medium_url"\s*:\s*"([^"]+)"', html)
+        if pic_m:
+            pic_url = pic_m.group(1).replace("\\/", "/")
+            if pic_url.startswith("http"):
+                data["profile_pic_url"] = pic_url
+                data["profile_pic_data"] = _download_image(pic_url)
+
+        # Try to get follower count from JSON
+        followers_m = re.search(r'"follower_count"\s*:\s*(\d+)', html)
+        if followers_m:
+            data["followers"] = int(followers_m.group(1))
+        pins_m = re.search(r'"pin_count"\s*:\s*(\d+)', html)
+        if pins_m:
+            data["enriched_data"] = {"pins": int(pins_m.group(1))}
+
+    except Exception:
+        pass
+    return data
+
+
+# ──────────────────────────────────────────────────────────────
 #  Platform Enricher Registry
 # ──────────────────────────────────────────────────────────────
 
@@ -521,6 +683,7 @@ PLATFORM_ENRICHERS = {
     "Twitter / X":  _enrich_twitter,
     "TikTok":       _enrich_tiktok,
     "LinkedIn":     _enrich_linkedin,
+    "Pinterest":    _enrich_pinterest,
 }
 
 # Platforms where we can try OG-tag scraping as fallback
@@ -529,7 +692,7 @@ OG_ENRICHABLE = {
     "500px", "DeviantArt", "ArtStation", "Kaggle", "HackerRank",
     "LeetCode", "ProductHunt", "Linktree", "About.me",
     "SoundCloud", "Bandcamp", "Letterboxd", "Goodreads",
-    "Pinterest", "Twitch", "YouTube", "Threads",
+    "Twitch", "YouTube", "Threads",
     "Snapchat", "Steam", "Vimeo", "Kick", "Mastodon",
     "Bluesky", "Patreon", "Substack", "Ko-fi", "Buymeacoffee",
 }
