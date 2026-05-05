@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}About — RECON OSINT Intelligence Scanner{% endblock %}
+{% block meta_description %}Learn about RECON, the free OSINT intelligence scanner that helps you discover and manage your digital footprint across 120+ platforms.{% endblock %}
+
+{% block content %}
+<section class="about-hero">
+    <div class="section-label">ℹ️ ABOUT US</div>
+    <h1>Built for <span class="gradient-text">Digital Awareness</span></h1>
+    <p>RECON is a free, open-source OSINT intelligence platform designed to help individuals understand and manage their digital footprint. We believe everyone deserves to know what the internet knows about them.</p>
+</section>
+
+<div class="about-grid">
+    <div class="glass-card about-card">
+        <h3>🎯 Our Mission</h3>
+        <p>To democratize digital intelligence and empower individuals to take control of their online presence. In an age where data breaches are commonplace and personal information is constantly being collected, RECON gives you the tools to understand your exposure.</p>
+    </div>
+    <div class="glass-card about-card">
+        <h3>🔍 What We Do</h3>
+        <p>RECON scans your username, email, or name across 120+ platforms including social media, developer sites, gaming platforms, and forums. We also check breach databases and correlate identities to build a comprehensive digital footprint report.</p>
+    </div>
+    <div class="glass-card about-card">
+        <h3>🛡️ Privacy First</h3>
+        <p>We don't store your search queries or results. RECON performs real-time scans against publicly available data — we never access private information or require you to create an account.</p>
+    </div>
+    <div class="glass-card about-card">
+        <h3>⚡ Technology</h3>
+        <p>Built with Python and Flask, RECON uses real-time Server-Sent Events (SSE) for live scan streaming, advanced web scraping for profile enrichment, and identity correlation algorithms to connect the dots.</p>
+    </div>
+    <div class="glass-card about-card">
+        <h3>🌐 Platform Coverage</h3>
+        <p>We scan 120+ platforms including Instagram, Twitter/X, GitHub, Reddit, LinkedIn, Steam, TikTok, Discord, and dozens more. Our email scanner checks 55+ services for account registrations and breach exposure.</p>
+    </div>
+    <div class="glass-card about-card">
+        <h3>📊 Intelligence Features</h3>
+        <p>Beyond simple username checking, RECON provides digital footprint scoring, risk assessment, breach intelligence with exposed field analysis, and identity cluster detection across platforms.</p>
+    </div>
+</div>
+
+<!-- CTA -->
+<section class="cta-banner">
+    <h2>See It In Action</h2>
+    <p>Try RECON's OSINT scanner for free — no account required, no data stored.</p>
+    <a href="/tool" class="btn-primary">Launch Scanner →</a>
+</section>
+{% endblock %}

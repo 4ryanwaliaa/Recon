@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}RECON — OSINT Intelligence Scanner{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}RECON — The #1 OSINT Intelligence Scanner. Discover your digital footprint across 120+ platforms.{% endblock %}">
+    <meta name="keywords" content="{% block meta_keywords %}OSINT, digital footprint, username search, breach detection{% endblock %}">
+    <meta name="author" content="RECON OSINT">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⬡</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/pages.css">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6109270472398539" crossorigin="anonymous"></script>
+    <meta name="google-adsense-account" content="ca-pub-6109270472398539">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+<div class="bg-animation" aria-hidden="true">
+    <div class="bg-orb bg-orb--1"></div>
+    <div class="bg-orb bg-orb--2"></div>
+    <div class="bg-orb bg-orb--3"></div>
+</div>
+{% block progress_bar %}{% endblock %}
+<nav class="navbar" id="navbar">
+    <div class="nav-container">
+        <a href="/" class="nav-brand">
+            <div class="nav-logo">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><path d="M11 8v6M8 11h6"/>
+                </svg>
+            </div>
+            <span class="nav-brand-text">RECON</span>
+            <span class="nav-brand-tag">OSINT</span>
+        </a>
+        <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="nav-links" id="navLinks">
+            <a href="/" class="nav-link {% if active_page == 'home' %}active{% endif %}">Home</a>
+            <a href="/tool" class="nav-link {% if active_page == 'tool' %}active{% endif %}">Tool</a>
+            <a href="/blog" class="nav-link {% if active_page == 'blog' %}active{% endif %}">Blog</a>
+            <a href="/guides" class="nav-link {% if active_page == 'guides' %}active{% endif %}">Guides</a>
+            <a href="/about" class="nav-link {% if active_page == 'about' %}active{% endif %}">About</a>
+            <a href="/contact" class="nav-link {% if active_page == 'contact' %}active{% endif %}">Contact</a>
+        </div>
+        <a href="/tool" class="nav-cta">Launch Tool →</a>
+    </div>
+</nav>
+<main class="page-wrapper">
+    {% block content %}{% endblock %}
+</main>
+<footer class="site-footer">
+    <div class="footer-container">
+        <div class="footer-grid">
+            <div class="footer-col footer-brand-col">
+                <div class="footer-brand">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><path d="M11 8v6M8 11h6"/>
+                    </svg>
+                    <span>RECON</span>
+                </div>
+                <p class="footer-tagline">The internet remembers everything.<br>Know what it knows about you.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Platform</h4>
+                <a href="/tool">OSINT Scanner</a>
+                <a href="/blog">Blog</a>
+                <a href="/guides">Guides</a>
+            </div>
+            <div class="footer-col">
+                <h4>Company</h4>
+                <a href="/about">About Us</a>
+                <a href="/contact">Contact</a>
+            </div>
+            <div class="footer-col">
+                <h4>Legal</h4>
+                <a href="/privacy-policy">Privacy Policy</a>
+                <a href="/terms">Terms & Conditions</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 RECON OSINT Intelligence Scanner. All rights reserved.</p>
+            <p class="footer-powered">Breach data <a href="https://leakcheck.io" target="_blank" rel="noopener">Powered by LeakCheck</a></p>
+        </div>
+    </div>
+</footer>
+<script src="/static/pages.js"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

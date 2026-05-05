@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Cybersecurity Guides — RECON OSINT | Beginner-Friendly Tutorials{% endblock %}
+{% block meta_description %}Step-by-step cybersecurity guides for beginners. Learn about OSINT, digital privacy, data breach protection, username security, and email safety.{% endblock %}
+
+{% block content %}
+<section>
+    <div class="section-header">
+        <div class="section-label">📖 GUIDES</div>
+        <h2 class="section-title">Cybersecurity <span class="gradient-text">Guides</span></h2>
+        <p class="section-subtitle">Beginner-friendly, step-by-step guides to understanding and improving your online security.</p>
+    </div>
+
+    <div class="guides-grid">
+        <!-- Guide 1 -->
+        <div class="glass-card guide-card" id="guide-digital-footprint">
+            <div class="guide-card-icon feature-icon blue">🌐</div>
+            <h3>Protect Your Digital Footprint</h3>
+            <p>Learn what a digital footprint is and how to minimize yours to reduce your attack surface.</p>
+            <ul class="guide-steps">
+                <li><span class="step-icon">01.</span> Audit your online presence using an OSINT scanner</li>
+                <li><span class="step-icon">02.</span> Identify all accounts linked to your username/email</li>
+                <li><span class="step-icon">03.</span> Delete or deactivate accounts you no longer use</li>
+                <li><span class="step-icon">04.</span> Tighten privacy settings on remaining accounts</li>
+                <li><span class="step-icon">05.</span> Set up regular monitoring for new exposures</li>
+            </ul>
+            <a href="/tool" class="btn-primary" style="margin-top:16px;font-size:.82rem;padding:10px 24px;">Audit My Footprint →</a>
+        </div>
+
+        <!-- Guide 2 -->
+        <div class="glass-card guide-card" id="guide-data-breaches">
+            <div class="guide-card-icon feature-icon purple">🛡️</div>
+            <h3>Understanding Data Breaches</h3>
+            <p>What happens when your data is breached and how to respond effectively.</p>
+            <ul class="guide-steps">
+                <li><span class="step-icon">01.</span> Understand what data breaches are and how they happen</li>
+                <li><span class="step-icon">02.</span> Check if your email appears in known breaches</li>
+                <li><span class="step-icon">03.</span> Change compromised passwords immediately</li>
+                <li><span class="step-icon">04.</span> Enable two-factor authentication everywhere</li>
+                <li><span class="step-icon">05.</span> Monitor for unauthorized account access</li>
+            </ul>
+            <a href="/tool" class="btn-primary" style="margin-top:16px;font-size:.82rem;padding:10px 24px;">Check My Email →</a>
+        </div>
+
+        <!-- Guide 3 -->
+        <div class="glass-card guide-card" id="guide-username-opsec">
+            <div class="guide-card-icon feature-icon pink">👤</div>
+            <h3>Username OPSEC</h3>
+            <p>Why using the same username everywhere is risky and how to improve your operational security.</p>
+            <ul class="guide-steps">
+                <li><span class="step-icon">01.</span> Understand how username correlation works</li>
+                <li><span class="step-icon">02.</span> Use different usernames for different contexts</li>
+                <li><span class="step-icon">03.</span> Avoid including personal info in usernames</li>
+                <li><span class="step-icon">04.</span> Use randomly generated handles for sensitive accounts</li>
+                <li><span class="step-icon">05.</span> Regularly scan your usernames with OSINT tools</li>
+            </ul>
+            <a href="/blog/username-opsec" class="btn-secondary" style="margin-top:16px;font-size:.82rem;padding:10px 24px;">Read Full Article →</a>
+        </div>
+
+        <!-- Guide 4 -->
+        <div class="glass-card guide-card" id="guide-email-security">
+            <div class="guide-card-icon feature-icon green">📧</div>
+            <h3>Email Security Best Practices</h3>
+            <p>Your email is the gateway to your digital life. Here's how to lock it down.</p>
+            <ul class="guide-steps">
+                <li><span class="step-icon">01.</span> Use a strong, unique password (16+ characters)</li>
+                <li><span class="step-icon">02.</span> Enable 2FA with an authenticator app (not SMS)</li>
+                <li><span class="step-icon">03.</span> Use email aliases for online registrations</li>
+                <li><span class="step-icon">04.</span> Learn to identify phishing emails</li>
+                <li><span class="step-icon">05.</span> Consider encrypted email providers (ProtonMail)</li>
+            </ul>
+            <a href="/blog/email-security-guide-2026" class="btn-secondary" style="margin-top:16px;font-size:.82rem;padding:10px 24px;">Read Full Guide →</a>
+        </div>
+
+        <!-- Guide 5 -->
+        <div class="glass-card guide-card" id="guide-what-is-osint">
+            <div class="guide-card-icon feature-icon blue">🔍</div>
+            <h3>What is OSINT?</h3>
+            <p>An introduction to Open Source Intelligence — what it is, how it works, and why it matters.</p>
+            <ul class="guide-steps">
+                <li><span class="step-icon">01.</span> OSINT = intelligence from publicly available sources</li>
+                <li><span class="step-icon">02.</span> Used by security researchers, journalists, and law enforcement</li>
+                <li><span class="step-icon">03.</span> Includes social media, public records, and web scraping</li>
+                <li><span class="step-icon">04.</span> Anyone can do OSINT — it's legal and accessible</li>
+                <li><span class="step-icon">05.</span> Understanding OSINT helps you protect your own privacy</li>
+            </ul>
+            <a href="/blog/what-is-osint" class="btn-secondary" style="margin-top:16px;font-size:.82rem;padding:10px 24px;">Learn More →</a>
+        </div>
+
+        <!-- Guide 6 -->
+        <div class="glass-card guide-card" id="guide-after-breach">
+            <div class="guide-card-icon feature-icon purple">🚨</div>
+            <h3>After a Data Breach: Action Plan</h3>
+            <p>Your data was breached. Don't panic — follow this step-by-step action plan.</p>
+            <ul class="guide-steps">
+                <li><span class="step-icon">01.</span> Change the compromised password immediately</li>
+                <li><span class="step-icon">02.</span> Change that password everywhere else you used it</li>
+                <li><span class="step-icon">03.</span> Enable 2FA on all critical accounts</li>
+                <li><span class="step-icon">04.</span> Check for unauthorized logins and transactions</li>
+                <li><span class="step-icon">05.</span> Consider a credit freeze if financial data was exposed</li>
+            </ul>
+            <a href="/blog/protect-yourself-after-breach" class="btn-secondary" style="margin-top:16px;font-size:.82rem;padding:10px 24px;">Read Full Guide →</a>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-banner" style="margin-top:60px;">
+    <h2>Put These Guides Into Practice</h2>
+    <p>Start by scanning your username or email to understand your current digital exposure.</p>
+    <a href="/tool" class="btn-primary">Launch OSINT Scanner →</a>
+</section>
+{% endblock %}

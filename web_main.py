@@ -39,13 +39,69 @@ app.secret_key = os.environ.get("FLASK_SECRET", os.urandom(24))
 
 
 # ──────────────────────────────────────────────────────────────
-#  ROUTE: Frontend
+#  ROUTE: Frontend Pages
 # ──────────────────────────────────────────────────────────────
 
 @app.route("/")
 def index():
-    """Serve the main frontend page."""
-    return render_template("index.html")
+    """Serve the landing / home page."""
+    from web.blog_data import get_all_articles
+    latest = get_all_articles()[:3]
+    return render_template("home.html", active_page="home", latest_articles=latest)
+
+
+@app.route("/tool")
+def tool():
+    """Serve the OSINT scanner tool page."""
+    return render_template("tool.html", active_page="tool")
+
+
+@app.route("/blog")
+def blog_list():
+    """Serve the blog listing page."""
+    from web.blog_data import get_all_articles
+    return render_template("blog_list.html", active_page="blog", articles=get_all_articles())
+
+
+@app.route("/blog/<slug>")
+def blog_post(slug):
+    """Serve a single blog article."""
+    from web.blog_data import get_article_by_slug, get_related_articles
+    article = get_article_by_slug(slug)
+    if not article:
+        return render_template("home.html", active_page="home", latest_articles=[]), 404
+    related = get_related_articles(slug, limit=3)
+    return render_template("blog_post.html", active_page="blog", article=article, related=related)
+
+
+@app.route("/guides")
+def guides():
+    """Serve the cybersecurity guides page."""
+    return render_template("guides.html", active_page="guides")
+
+
+@app.route("/about")
+def about():
+    """Serve the about page."""
+    return render_template("about.html", active_page="about")
+
+
+@app.route("/contact")
+def contact():
+    """Serve the contact page."""
+    return render_template("contact.html", active_page="contact")
+
+
+@app.route("/privacy-policy")
+def privacy_policy():
+    """Serve the privacy policy page."""
+    return render_template("privacy.html", active_page="privacy")
+
+
+@app.route("/terms")
+def terms():
+    """Serve the terms and conditions page."""
+    return render_template("terms.html", active_page="terms")
 
 
 @app.route("/ads.txt")

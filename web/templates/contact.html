@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Contact — RECON OSINT Intelligence Scanner{% endblock %}
+{% block meta_description %}Get in touch with the RECON OSINT team. Questions, feedback, or partnership inquiries — we'd love to hear from you.{% endblock %}
+
+{% block content %}
+<section>
+    <div class="section-header">
+        <div class="section-label">📬 CONTACT</div>
+        <h2 class="section-title">Get In <span class="gradient-text">Touch</span></h2>
+        <p class="section-subtitle">Have questions, feedback, or need help? We'd love to hear from you.</p>
+    </div>
+
+    <div class="contact-grid">
+        <!-- Contact Form -->
+        <div class="glass-card" style="padding:32px;">
+            <form class="contact-form" id="contactForm" onsubmit="event.preventDefault(); document.getElementById('formSuccess').style.display='block'; this.reset();">
+                <div class="form-group">
+                    <label for="contact-name">Your Name</label>
+                    <input type="text" id="contact-name" name="name" placeholder="John Doe" required>
+                </div>
+                <div class="form-group">
+                    <label for="contact-email">Email Address</label>
+                    <input type="email" id="contact-email" name="email" placeholder="john@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="contact-subject">Subject</label>
+                    <input type="text" id="contact-subject" name="subject" placeholder="How can we help?">
+                </div>
+                <div class="form-group">
+                    <label for="contact-message">Message</label>
+                    <textarea id="contact-message" name="message" placeholder="Tell us what's on your mind..." required></textarea>
+                </div>
+                <button type="submit" class="btn-primary" style="width:100%;justify-content:center;">Send Message →</button>
+                <div id="formSuccess" style="display:none;text-align:center;padding:12px;color:var(--success);font-size:.88rem;font-weight:600;margin-top:8px;">
+                    ✓ Thanks for reaching out! We'll get back to you soon.
+                </div>
+            </form>
+        </div>
+
+        <!-- Contact Info -->
+        <div class="contact-info">
+            <h3>Other Ways to Reach Us</h3>
+            <div class="contact-info-item">
+                <div class="ci-icon">📧</div>
+                <div>
+                    <h4>Email</h4>
+                    <p><a href="mailto:aryanwalia7888@gmail.com" style="color:var(--neon-blue);text-decoration:none;">aryanwalia7888@gmail.com</a></p>
+                </div>
+            </div>
+            <div class="contact-info-item" style="border-bottom:none;">
+                <div class="ci-icon">🐙</div>
+                <div>
+                    <h4>GitHub</h4>
+                    <p><a href="https://github.com/4ryanwalia/recon" target="_blank" rel="noopener" style="color:var(--neon-blue);text-decoration:none;">github.com/4ryanwalia/recon</a></p>
+                </div>
+            </div>
+
+            <!-- FAQ -->
+            <div style="margin-top:32px;">
+                <h3 style="margin-bottom:16px;">❓ FAQ</h3>
+                <div class="glass-card" style="padding:20px;margin-bottom:12px;">
+                    <h4 style="font-size:.9rem;font-weight:600;margin-bottom:4px;">Is RECON free to use?</h4>
+                    <p style="color:var(--text-secondary);font-size:.82rem;line-height:1.5;">Yes, RECON is completely free. We don't require account creation or payment.</p>
+                </div>
+                <div class="glass-card" style="padding:20px;margin-bottom:12px;">
+                    <h4 style="font-size:.9rem;font-weight:600;margin-bottom:4px;">Do you store my search data?</h4>
+                    <p style="color:var(--text-secondary);font-size:.82rem;line-height:1.5;">No. All scans are performed in real-time and results are not saved on our servers.</p>
+                </div>
+                <div class="glass-card" style="padding:20px;">
+                    <h4 style="font-size:.9rem;font-weight:600;margin-bottom:4px;">How do I report a bug?</h4>
+                    <p style="color:var(--text-secondary);font-size:.82rem;line-height:1.5;">Open an issue on our GitHub repository or send us an email.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

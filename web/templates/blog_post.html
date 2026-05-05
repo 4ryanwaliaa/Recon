@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}{{ article.title }} — RECON OSINT Blog{% endblock %}
+{% block meta_description %}{{ article.excerpt }}{% endblock %}
+{% block og_title %}{{ article.title }}{% endblock %}
+{% block og_description %}{{ article.excerpt }}{% endblock %}
+
+{% block progress_bar %}
+<div class="reading-progress" id="readingProgress"></div>
+{% endblock %}
+
+{% block content %}
+<article class="article-container">
+    <!-- Header -->
+    <header class="article-header">
+        <span class="blog-card-tag {{ article.tag_class }}">{{ article.category }}</span>
+        <h1>{{ article.title }}</h1>
+        <div class="article-meta">
+            <span>✍️ {{ article.author }}</span>
+            <span>📅 {{ article.date }}</span>
+            <span>⏱️ {{ article.read_time }}</span>
+        </div>
+    </header>
+
+    <!-- Body -->
+    <div class="article-body">
+        {{ article.content|safe }}
+    </div>
+
+    <!-- CTA -->
+    <div class="article-cta">
+        <h3>🔍 Try RECON Scanner</h3>
+        <p>Want to see what the internet knows about you? Scan your username or email across 120+ platforms for free.</p>
+        <a href="/tool" class="btn-primary">Launch Scanner →</a>
+    </div>
+
+    <!-- Related Articles -->
+    {% if related %}
+    <div class="related-articles">
+        <h3>📚 RELATED ARTICLES</h3>
+        <div class="related-grid">
+            {% for rel in related %}
+            <div class="glass-card related-card">
+                <span class="blog-card-tag {{ rel.tag_class }}" style="font-size:.6rem;padding:2px 8px;margin-bottom:8px;">{{ rel.category }}</span>
+                <h4><a href="/blog/{{ rel.slug }}">{{ rel.title }}</a></h4>
+                <div class="blog-card-meta">
+                    <span>📅 {{ rel.date }}</span>
+                    <span>⏱️ {{ rel.read_time }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</article>
+{% endblock %}

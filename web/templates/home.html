@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}RECON — OSINT Intelligence Scanner | Discover Your Digital Footprint{% endblock %}
+{% block meta_description %}RECON is the #1 OSINT Intelligence Scanner. Discover your digital footprint across 120+ platforms. Username search, email breach detection, identity correlation, and threat assessment.{% endblock %}
+
+{% block content %}
+<!-- ═══ Hero ═══ -->
+<section class="home-hero">
+    <div class="section-label">🔍 OSINT INTELLIGENCE PLATFORM</div>
+    <h1>Know What The Internet<br><span class="gradient-text">Knows About You</span></h1>
+    <p class="hero-sub">Scan your username across <strong>120+ platforms</strong>, detect data breaches, and build a complete digital footprint report — in seconds.</p>
+    <div class="hero-cta-row">
+        <a href="/tool" class="btn-primary" id="hero-cta-launch">Launch Scanner →</a>
+        <a href="/guides" class="btn-secondary" id="hero-cta-learn">Learn More</a>
+    </div>
+</section>
+
+<!-- ═══ Stats ═══ -->
+<section class="stats-section">
+    <div class="stat-item">
+        <div class="stat-number" data-count="120" data-suffix="+">0+</div>
+        <div class="stat-desc">Platforms Scanned</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-number" data-count="55" data-suffix="+">0+</div>
+        <div class="stat-desc">Email Checks</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-number" data-count="10" data-suffix="s">0s</div>
+        <div class="stat-desc">Average Scan Time</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-number" data-count="100" data-suffix="%">0%</div>
+        <div class="stat-desc">Free To Use</div>
+    </div>
+</section>
+
+<!-- ═══ Features ═══ -->
+<section>
+    <div class="section-header">
+        <div class="section-label">⚡ CAPABILITIES</div>
+        <h2 class="section-title">Powerful <span class="gradient-text">Intelligence Tools</span></h2>
+        <p class="section-subtitle">Everything you need to understand and manage your digital exposure.</p>
+    </div>
+    <div class="features-grid">
+        <div class="glass-card feature-card">
+            <div class="feature-icon blue">👤</div>
+            <h3>Username Search</h3>
+            <p>Check if a username exists across 120+ social media, developer, gaming, and forum platforms simultaneously.</p>
+        </div>
+        <div class="glass-card feature-card">
+            <div class="feature-icon purple">📧</div>
+            <h3>Email Breach Detection</h3>
+            <p>Scan email addresses against breach databases and discover linked accounts across 55+ services.</p>
+        </div>
+        <div class="glass-card feature-card">
+            <div class="feature-icon pink">🔗</div>
+            <h3>Identity Correlation</h3>
+            <p>Our AI correlates findings to identify linked accounts and build a unified identity profile.</p>
+        </div>
+        <div class="glass-card feature-card">
+            <div class="feature-icon green">🛡️</div>
+            <h3>Threat Assessment</h3>
+            <p>Get a digital footprint score with risk analysis and actionable recommendations to improve your security.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ How It Works ═══ -->
+<section class="how-it-works">
+    <div class="section-header">
+        <div class="section-label">🚀 HOW IT WORKS</div>
+        <h2 class="section-title">Three Simple <span class="gradient-text">Steps</span></h2>
+    </div>
+    <div class="steps-grid">
+        <div class="glass-card step-card">
+            <div class="step-num">01</div>
+            <h3>Enter Your Query</h3>
+            <p>Type your username, email address, or full name into the scanner. Choose your scan mode and depth.</p>
+        </div>
+        <div class="glass-card step-card">
+            <div class="step-num">02</div>
+            <h3>Real-Time Scanning</h3>
+            <p>Watch as RECON scans 120+ platforms in real-time, streaming results as they're discovered via SSE.</p>
+        </div>
+        <div class="glass-card step-card">
+            <div class="step-num">03</div>
+            <h3>Review Your Report</h3>
+            <p>Get a comprehensive intelligence report with your digital footprint score, risk assessment, and found profiles.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ Blog Preview ═══ -->
+{% if latest_articles %}
+<section class="blog-preview">
+    <div class="section-header">
+        <div class="section-label">📝 LATEST ARTICLES</div>
+        <h2 class="section-title">From The <span class="gradient-text">Blog</span></h2>
+    </div>
+    <div class="blog-preview-grid">
+        {% for article in latest_articles[:3] %}
+        <div class="glass-card blog-card">
+            <div class="blog-card-body">
+                <span class="blog-card-tag {{ article.tag_class }}">{{ article.category }}</span>
+                <h3><a href="/blog/{{ article.slug }}">{{ article.title }}</a></h3>
+                <p class="blog-excerpt">{{ article.excerpt }}</p>
+                <div class="blog-card-meta">
+                    <span>📅 {{ article.date }}</span>
+                    <span>⏱️ {{ article.read_time }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="view-all">
+        <a href="/blog">View All Articles →</a>
+    </div>
+</section>
+{% endif %}
+
+<!-- ═══ CTA Banner ═══ -->
+<section class="cta-banner">
+    <h2>Ready to Discover Your Digital Footprint?</h2>
+    <p>Start your investigation now — it's free, fast, and requires no account.</p>
+    <a href="/tool" class="btn-primary" id="cta-bottom-launch">Start Scanning →</a>
+</section>
+{% endblock %}

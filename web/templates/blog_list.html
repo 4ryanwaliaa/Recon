@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Blog — RECON OSINT | Cybersecurity & Digital Privacy Articles{% endblock %}
+{% block meta_description %}Read the latest articles on OSINT, cybersecurity, digital privacy, data breaches, and protecting your online identity from the RECON team.{% endblock %}
+
+{% block content %}
+<section>
+    <div class="section-header">
+        <div class="section-label">📝 BLOG</div>
+        <h2 class="section-title">Cybersecurity <span class="gradient-text">Insights</span></h2>
+        <p class="section-subtitle">Expert articles on OSINT, digital privacy, data breaches, and protecting your online identity.</p>
+    </div>
+
+    <div class="blog-grid">
+        {% for article in articles %}
+        <div class="glass-card blog-card" id="blog-card-{{ article.slug }}">
+            <div class="blog-card-body">
+                <span class="blog-card-tag {{ article.tag_class }}">{{ article.category }}</span>
+                <h3><a href="/blog/{{ article.slug }}">{{ article.title }}</a></h3>
+                <p class="blog-excerpt">{{ article.excerpt }}</p>
+                <div class="blog-card-meta">
+                    <span>📅 {{ article.date }}</span>
+                    <span>⏱️ {{ article.read_time }}</span>
+                    <span>✍️ {{ article.author }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ═══ CTA ═══ -->
+<section class="cta-banner" style="margin-top:60px;">
+    <h2>Want to See Your Digital Footprint?</h2>
+    <p>Try RECON's free OSINT scanner — scan your username across 120+ platforms in seconds.</p>
+    <a href="/tool" class="btn-primary">Launch Scanner →</a>
+</section>
+{% endblock %}
